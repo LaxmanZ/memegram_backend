@@ -9,7 +9,13 @@ router.post('/signup', async (req, res) => {
     const { name, email, password } = req.body;
 
     const existing = await User.findOne({ email });
-    if (existing) return res.status(400).json({ msg: 'User already exists' });
+    if (existing) {
+      return res.status(400).json({
+        status: false,
+        code: 400,
+        message: 'User already exists',
+      });
+    }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPwd = await bcrypt.hash(password, salt);
@@ -17,9 +23,23 @@ router.post('/signup', async (req, res) => {
     const newUser = new User({ name, email, password: hashedPwd });
     await newUser.save();
 
-    res.status(201).json({ msg: 'User created successfully' });
+    return res.status(201).json({
+      status: true,
+      code: 201,
+      message: 'User created successfully',
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+      },
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({
+      status: false,
+      code: 500,
+      message: 'Internal server error',
+      error: err.message,
+    });
   }
 });
 
@@ -29,21 +49,45 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ msg: 'Invalid credentials' });
+    if (!user) {
+      return res.status(400).json({
+        status: false,
+        code: 400,
+        message: 'Invalid credentials',
+      });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ msg: 'Invalid credentials' });
+    if (!isMatch) {
+      return res.status(400).json({
+        status: false,
+        code: 400,
+        message: 'Invalid credentials',
+      });
+    }
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: '1h',
     });
 
-    res.json({
+    return res.status(200).json({
+      status: true,
+      code: 200,
+      message: 'Login successful',
       token,
-      user: { id: user._id, name: user.name, email: user.email },
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+      },
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({
+      status: false,
+      code: 500,
+      message: 'Internal server error',
+      error: err.message,
+    });
   }
 });
 
